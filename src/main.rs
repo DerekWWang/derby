@@ -42,6 +42,11 @@ async fn health_check() -> impl IntoResponse {
     }))
 }
 
+fn check_wallet() -> bool {
+    // Placeholder logic for wallet check
+    true
+}
+
 pub async fn get_all_contracts(
     State(pool): State<SqlitePool>,
 ) -> Result<Json<Vec<Contract>>, (StatusCode, String)> {
@@ -65,13 +70,17 @@ pub async fn create_contract(
 ) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, String)> {
     let id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
+    
+    // Calculate initial total_amount from creator's bet
+    let initial_amount = payload.initial_amount.unwrap_or(0);
+    
     let _new_contract = sqlx::query!(
         "INSERT INTO contracts (id, m_id, c_id, rules, total_amount, timestamp, closing_timestamp, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         id,
         payload.m_id,
         payload.c_id,
         payload.rules,
-        0i64, // initial total_amount
+        initial_amount,
         now,
         payload.closing_timestamp,
         0i64, // initial state: 0=Open
@@ -79,6 +88,27 @@ pub async fn create_contract(
     .execute(&pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // If creator provided an initial bet, create an order for it
+    if let (Some(side), Some(amount)) = (payload.initial_side, payload.initial_amount) {
+        if amount > 0 {
+            let side_int: i64 = match side {
+                contracts::Side::Yes => 0,
+                contracts::Side::No => 1,
+            };
+            sqlx::query!(
+                "INSERT INTO orders (u_id, contract_id, side, amount, timestamp) VALUES (?, ?, ?, ?, ?)",
+                payload.c_id,
+                id,
+                side_int,
+                amount,
+                now,
+            )
+            .execute(&pool)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        }
+    }
 
     println!("Contract created with ID: {}", id);
     Ok((StatusCode::CREATED, Json(json!({"message": "Contract created successfully", "id": id}))))

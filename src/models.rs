@@ -7,6 +7,9 @@ pub struct CreateContractRequest {
     pub c_id: String,
     pub rules: String,
     pub closing_timestamp: i64,
+    // Creator's initial bet (optional)
+    pub initial_side: Option<Side>,
+    pub initial_amount: Option<i64>,
 }
 
 #[derive(Deserialize)]
