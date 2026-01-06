@@ -19,3 +19,15 @@ pub struct CreateOrderRequest {
     pub side: Side,
     pub amount: i64,
 }
+
+#[derive(Deserialize)]
+pub struct RegisterUserRequest {
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Deserialize)]
+pub struct LoginUserRequest {
+    pub username: String,
+    pub password: String,
+}
