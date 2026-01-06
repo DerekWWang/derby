@@ -1,17 +1,18 @@
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
+use serde::Deserialize;
+use crate::contracts::Side;
 
 #[derive(Deserialize)]
 pub struct CreateContractRequest {
-    m_id: String,
-    c_id: Uuid,
-    rules: String,
+    pub m_id: String,
+    pub c_id: String,
+    pub rules: String,
+    pub closing_timestamp: i64,
 }
 
 #[derive(Deserialize)]
 pub struct CreateOrderRequest {
-    pub u_id: Uuid,
-    pub contract_id: Uuid,
+    pub u_id: String,
+    pub contract_id: String,
     pub side: Side,
-    pub amount: u64,
+    pub amount: i64,
 }
