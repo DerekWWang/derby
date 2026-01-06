@@ -1,27 +1,26 @@
-use serde::Serialize;
-use uuid::Uuid;
+use serde::{Deserialize, Serialize};
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Side { Yes, No }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug, Clone)]
 pub enum ContractState { Open, Filled, Cancelled }
 
 #[derive(Serialize)]
 pub struct Contract {
-    pub id: Uuid,
+    pub id: String,
     pub m_id: String,
-    pub c_id: Uuid, // creator id
-    pub total_amount: u64,
+    pub c_id: String, // creator id
+    pub total_amount: i64,
     pub rules: String,
     pub timestamp: i64,
     pub closing_timestamp: i64,
-    pub state: ContractState,
+    pub state: i64, // 0=Open, 1=Filled, 2=Cancelled
 }
 
 pub struct Order {
-    pub u_id: Uuid,
-    pub contract_id: Uuid,
+    pub u_id: String,
+    pub contract_id: String,
     pub side: Side,
     pub amount: u64,
     pub timestamp: i64,
