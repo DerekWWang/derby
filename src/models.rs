@@ -4,7 +4,7 @@ use crate::contracts::Side;
 #[derive(Deserialize)]
 pub struct CreateContractRequest {
     pub m_id: String,
-    pub c_id: String,
+    pub c_id: Option<String>,
     pub rules: String,
     pub closing_timestamp: i64,
     // Creator's initial bet (optional)
@@ -14,7 +14,7 @@ pub struct CreateContractRequest {
 
 #[derive(Deserialize)]
 pub struct CreateOrderRequest {
-    pub u_id: String,
+    pub u_id: Option<String>,
     pub contract_id: String,
     pub side: Side,
     pub amount: i64,

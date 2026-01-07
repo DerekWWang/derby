@@ -23,9 +23,16 @@ CREATE TABLE IF NOT EXISTS orders (
 
 -- Create Users Table
 CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT PRIMARY KEY NOT NULL,
     username TEXT NOT NULL UNIQUE,
-    email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-)
+    created_at INTEGER NOT NULL
+);
+
+-- Create Wallets Table
+CREATE TABLE IF NOT EXISTS wallets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    current_amount INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);
