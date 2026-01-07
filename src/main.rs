@@ -232,6 +232,19 @@ pub async fn get_wallet_balance(
     }
 }
 
+pub async fn deduct_funds(pool: &SqlitePool, amount: i64, user_id: &String) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query!(
+        "UPDATE wallets SET current_amount = current_amount - ? WHERE user_id = ? AND current_amount >= ?",
+        amount,
+        user_id,
+        amount
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(result.rows_affected() > 0)
+}
+
 pub async fn get_all_contracts(
     State(pool): State<SqlitePool>,
 ) -> Result<Json<Vec<Contract>>, (StatusCode, Json<serde_json::Value>)> {
@@ -256,15 +269,28 @@ pub async fn create_contract(
 ) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<serde_json::Value>)> {
     let id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
+
+    if let Some(closing) = payload.closing_timestamp.checked_sub(now) {
+        if closing < 3600 {
+            return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Closing timestamp must be at least 1 hour in the future"}))));
+        }
+    } else {
+        return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Closing timestamp must be in the future"}))));
+    }
     
     // Calculate initial total_amount from creator's bet
     let creator = claims.sub; // Use authenticated user ID
-    let has_funds = check_wallet(State(pool.clone()), payload.initial_amount.unwrap_or(0), &creator).await;
-    if !has_funds {
-        return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Insufficient funds in wallet"}))));
-    }
-
     let initial_amount = payload.initial_amount.unwrap_or(0);
+    
+    if initial_amount > 0 {
+        let deducted = deduct_funds(&pool, initial_amount, &creator)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?;
+            
+        if !deducted {
+            return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Insufficient funds in wallet"}))));
+        }
+    }
     
     let _new_contract = sqlx::query!(
         "INSERT INTO contracts (id, m_id, c_id, rules, total_amount, timestamp, closing_timestamp, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -313,8 +339,12 @@ pub async fn create_order(
 ) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<serde_json::Value>)> {
     let now = chrono::Utc::now().timestamp();
     
-    // Check funds
-    if !check_wallet(State(pool.clone()), payload.amount, &claims.sub).await {
+    // Deduct funds
+    let deducted = deduct_funds(&pool, payload.amount, &claims.sub)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?;
+
+    if !deducted {
          return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Insufficient funds"}))));
     }
 
