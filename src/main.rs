@@ -24,6 +24,7 @@ use tower_http::cors::{CorsLayer, Any};
 
 mod contracts;
 mod models;
+mod oai;
 use contracts::Contract;
 use models::{CreateContractRequest, CreateOrderRequest, RegisterUserRequest, LoginUserRequest};
 
@@ -387,6 +388,16 @@ pub async fn create_order(
     Ok((StatusCode::CREATED, Json(json!({"message": "Order created successfully"}))))
 }
 
+pub async fn augment_contract_with_oai(contract_rules: &str) -> Result<String, Box<dyn std::error::Error>> {
+    let prompt = format!(
+        "Analyze the following betting pool context and generate a detailed contract that minimizes future disputes:\n\n{}",
+        contract_rules
+    );
+
+    let response = oai::openai_query(&prompt).await?;
+    Ok(response)
+}
+
 #[tokio::main]
 async fn main() {
     println!("Hello, world!");
@@ -408,6 +419,7 @@ async fn main() {
         .route("/register", axum::routing::post(register_user))
         .route("/login", axum::routing::post(login_user))
         .route("/wallet/{user_id}", get(get_wallet_balance))
+        .route("")
         .layer(cors)
         .with_state(pool);
 
